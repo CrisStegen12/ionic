@@ -280,6 +280,7 @@ export class VirtualScroll {
       }
     };
     if (node && node.componentOnReady) {
+      // tslint:disable-next-line:no-floating-promises
       node.componentOnReady().then(update);
     } else {
       update();

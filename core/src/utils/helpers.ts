@@ -10,13 +10,13 @@ export function reorderArray(array: any[], indexes: {from: number, to: number}):
 }
 
 export function hasShadowDom(el: HTMLElement) {
-  return !!el.shadowRoot && !!el.attachShadow;
+  return el.shadowRoot !== null && (el as any).attachShadow != null;
 }
 
 export function renderHiddenInput(container: HTMLElement, name: string, value: string, disabled: boolean) {
   if (hasShadowDom(container)) {
-    let input = container.querySelector('input.aux-input') as HTMLInputElement;
-    if (!input) {
+    let input = container.querySelector('input.aux-input') as HTMLInputElement | null;
+    if (input === null) {
       input = container.ownerDocument.createElement('input');
       input.type = 'hidden';
       input.classList.add('aux-input');

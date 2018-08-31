@@ -1,6 +1,6 @@
 import { Build, Component, Method, Prop } from '@stencil/core';
 
-import { Animation, AnimationBuilder, MenuI } from '../../interface';
+import { Animation, AnimationBuilder, MenuControllerI, MenuI } from '../../interface';
 
 import { menuOverlayAnimation } from './animations/overlay';
 import { menuPushAnimation } from './animations/push';
@@ -10,7 +10,7 @@ import { menuRevealAnimation } from './animations/reveal';
   tag: 'ion-menu-controller',
   styleUrl: 'menu-controller.scss'
 })
-export class MenuController {
+export class MenuController implements MenuControllerI {
   private menus: MenuI[] = [];
   private menuAnimations = new Map<string, AnimationBuilder>();
 
@@ -40,8 +40,8 @@ export class MenuController {
    */
   @Method()
   async close(menuId?: string): Promise<boolean> {
-    const menu = await (menuId ? this.get(menuId) : this.getOpen());
-    if (menu) {
+    const menu = await (menuId !== undefined ? this.get(menuId) : this.getOpen());
+    if (menu !== null) {
       return menu.close();
     }
     return false;
@@ -93,11 +93,13 @@ export class MenuController {
    */
   @Method()
   async isOpen(menuId?: string): Promise<boolean> {
-    if (menuId) {
+    if (menuId !== undefined) {
       const menu = await this.get(menuId);
-      return (menu && menu.isOpen()) || false;
+      return (menu !== null && menu.isOpen());
+    } else {
+      const menu = await this.getOpen();
+      return menu !== null;
     }
-    return !!this.getOpen();
   }
 
   /**
@@ -141,11 +143,12 @@ export class MenuController {
 
       // didn't find a menu side that is enabled
       // so try to get the first menu side found
-      return this.find(m => m.side === menuId) || null;
-    } else if (menuId) {
+      return this.find(m => m.side === menuId);
+
+    } else if (menuId !== undefined) {
       // the menuId was not left or right
       // so try to get the menu by its "id"
-      return this.find(m => m.menuId === menuId) || null;
+      return this.find(m => m.menuId === menuId);
     }
 
     // return the first enabled menu
@@ -162,16 +165,16 @@ export class MenuController {
    * Returns the instance of the menu already opened, otherwise `null`.
    */
   @Method()
-  async getOpen(): Promise<HTMLIonMenuElement | null> {
-    return this.find(m => m._isOpen);
+  getOpen(): Promise<HTMLIonMenuElement | null> {
+    return Promise.resolve(this.getOpenSync());
   }
 
   /**
    * Returns an array of all menu instances.
    */
   @Method()
-  async getMenus(): Promise<HTMLIonMenuElement[]> {
-    return this.menus.map(menu => menu.el);
+  getMenus(): Promise<HTMLIonMenuElement[]> {
+    return Promise.resolve(this.getMenusSync());
   }
 
   /**
@@ -216,14 +219,19 @@ export class MenuController {
     if (shouldOpen) {
       const openedMenu = await this.getOpen();
       if (openedMenu && menu.el !== openedMenu) {
-        openedMenu.setOpen(false, false);
+        return openedMenu.setOpen(false, false);
       }
     }
     return menu._setOpen(shouldOpen, animated);
   }
 
   @Method()
-  createAnimation(type: string, menuCmp: MenuI): Promise<Animation> {
+  _getInstance(): Promise<MenuControllerI> {
+    return Promise.resolve(this);
+  }
+
+  @Method()
+  _createAnimation(type: string, menuCmp: MenuI): Promise<Animation> {
     const animationBuilder = this.menuAnimations.get(type);
     if (!animationBuilder) {
       return Promise.reject('animation not registered');
@@ -231,14 +239,21 @@ export class MenuController {
     return this.animationCtrl.create(animationBuilder, null, menuCmp);
   }
 
-  @Method()
-  registerAnimation(name: string, animation: AnimationBuilder) {
+  getOpenSync(): HTMLIonMenuElement | null {
+    return this.find(m => m._isOpen);
+  }
+
+  getMenusSync(): HTMLIonMenuElement[] {
+    return this.menus.map(menu => menu.el);
+  }
+
+  private registerAnimation(name: string, animation: AnimationBuilder) {
     this.menuAnimations.set(name, animation);
   }
 
   private find(predicate: (menu: MenuI) => boolean): HTMLIonMenuElement | null {
     const instance = this.menus.find(predicate);
-    if (instance) {
+    if (instance !== undefined) {
       return instance.el;
     }
     return null;

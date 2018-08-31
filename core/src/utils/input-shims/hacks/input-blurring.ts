@@ -21,8 +21,8 @@ export function enableInputBlurring(doc: Document) {
       didScroll = false;
       return;
     }
-    const active = doc.activeElement as HTMLElement;
-    if (!active) {
+    const active = doc.activeElement as HTMLElement | undefined | null;
+    if (active == null) {
       return;
     }
 
